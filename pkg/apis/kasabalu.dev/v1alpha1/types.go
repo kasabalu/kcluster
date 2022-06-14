@@ -24,3 +24,9 @@ type NodePool struct {
 	Name  string
 	Count int
 }
+
+type KlusterList struct {
+	metav1.TypeMeta
+	metav1.ObjectMeta
+	Items []Kluster
+}
