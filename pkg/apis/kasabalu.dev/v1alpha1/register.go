@@ -3,6 +3,7 @@ package v1alpha1
 import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	_ "k8s.io/client-go/rest"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -13,6 +14,7 @@ var SchemeGroupVersion = schema.GroupVersion{Group: "kasabalu.dev", Version: "v1
 
 var (
 	SchemeBuilder runtime.SchemeBuilder
+	AddToScheme   = SchemeBuilder.AddToScheme
 )
 
 func init() {
