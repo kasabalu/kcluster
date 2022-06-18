@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
@@ -12,7 +13,7 @@ import (
 	"time"
 
 	klient "github.com/kasabalu/kcluster/pkg/client/clientset/versioned"
-	kfactory "github.com/kasabalu/kcluster/pkg/client/informers/internalversion"
+	kfactory "github.com/kasabalu/kcluster/pkg/client/informers/externalversions"
 	"github.com/kasabalu/kcluster/pkg/controller"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -42,8 +43,13 @@ func main() {
 	}
 
 	fmt.Println(klientset)
-	klusters, err := klientset.KasabaluV1alpha1().Klusters("").List(context.Background(), metav1.ListOptions{})
+	klusters, err := klientset.KasabaluV1alpha1().Klusters("default").List(context.Background(), metav1.ListOptions{})
 	fmt.Println(klusters)
+
+	client, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Printf("getting std client %s\n", err.Error())
+	}
 
 	// NewCntroller in controller pkg expets cleintset and Informer
 	// To create informer, call Informer Factory from  factory.go
@@ -51,7 +57,7 @@ func main() {
 	ch := make(chan struct{})
 
 	infoFact := kfactory.NewSharedInformerFactory(klientset, 20*time.Minute)
-	c := controller.NewController(klientset, infoFact.Kasabalu().InternalVersion().Klusters())
+	c := controller.NewController(client, klientset, infoFact.Kasabalu().V1alpha1().Klusters())
 	infoFact.Start(ch)
 	err = c.Run(ch)
 

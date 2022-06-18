@@ -1,21 +1,27 @@
 package controller
 
 import (
+	"context"
 	"fmt"
-	klister "github.com/kasabalu/kcluster/pkg/client/listers/v1alpha1/internalversion"
+	"github.com/kasabalu/kcluster/pkg/apis/kasabalu.dev/v1alpha1"
+	klister "github.com/kasabalu/kcluster/pkg/client/listers/kasabalu.dev/v1alpha1"
+	"github.com/kasabalu/kcluster/pkg/do"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"log"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 	"time"
 
 	klientset "github.com/kasabalu/kcluster/pkg/client/clientset/versioned"
-	kinformer "github.com/kasabalu/kcluster/pkg/client/informers/internalversion/v1alpha1/internalversion"
+	kinformer "github.com/kasabalu/kcluster/pkg/client/informers/externalversions/kasabalu.dev/v1alpha1"
 
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 )
 
 type Controller struct {
+	client kubernetes.Interface
 	// clientset for custom resource kluster
 
 	klient klientset.Interface
@@ -30,10 +36,11 @@ type Controller struct {
 	wq workqueue.RateLimitingInterface
 }
 
-func NewController(klient klientset.Interface, klusterInformer kinformer.KlusterInformer) *Controller {
+func NewController(client kubernetes.Interface, klient klientset.Interface, klusterInformer kinformer.KlusterInformer) *Controller {
 	// to intilize the controller, client set and informers are required, take that as method parameters
 
 	c := &Controller{
+		client:        client,
 		klient:        klient,
 		klusterSynced: klusterInformer.Informer().HasSynced,
 		kLister:       klusterInformer.Lister(),
@@ -98,7 +105,33 @@ func (c *Controller) processItem() bool {
 	}
 	log.Printf("Kluster specs %v", kluster.Spec)
 
+	clusterID, err := do.Create(c.client, kluster.Spec)
+	if err != nil {
+		// do something
+		log.Printf("errro %s, creating the cluster", err.Error())
+	}
+
+	log.Printf("cluster id that we have is %s\n", clusterID)
+
+	err = c.updateStatus(clusterID, "creating", kluster)
+	if err != nil {
+		log.Printf("error %s, updating status of the kluster %s\n", err.Error(), kluster.Name)
+	}
+
 	return true
+}
+
+func (c *Controller) updateStatus(id, progress string, kluster *v1alpha1.Kluster) error {
+	// get the latest version of kluster
+	k, err := c.klient.KasabaluV1alpha1().Klusters(kluster.Namespace).Get(context.Background(), kluster.Name, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	k.Status.KlusterID = id
+	k.Status.Progress = progress
+	_, err = c.klient.KasabaluV1alpha1().Klusters(kluster.Namespace).UpdateStatus(context.Background(), k, metav1.UpdateOptions{})
+	return err
 }
 
 func (c *Controller) handleAdd(obj interface{}) {
