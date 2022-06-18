@@ -1,8 +1,10 @@
 package controller
 
 import (
+	"fmt"
 	klister "github.com/kasabalu/kcluster/pkg/client/listers/v1alpha1/internalversion"
-	"google.golang.org/appengine/log"
+	"log"
+
 	"k8s.io/apimachinery/pkg/util/wait"
 	"time"
 
@@ -76,12 +78,31 @@ func (c *Controller) processItem() bool {
 		return false
 	}
 	defer c.wq.Forget(item) // this will delete/mark as proecces item from queue, make sure not processed again.
+	key, err := cache.MetaNamespaceKeyFunc(item)
+	if err != nil {
+		fmt.Printf("getting key from cahce %s\n", err.Error())
+	}
 
-	return false
+	ns, name, err := cache.SplitMetaNamespaceKey(key) // getting namespace and name
+	if err != nil {
+		fmt.Printf("splitting key into namespace and name %s\n", err.Error())
+		return false
+	}
+
+	kluster, err := c.kLister.Klusters(ns).Get(name)
+
+	if err != nil {
+		// re-try
+		fmt.Printf("getting kluster resource from Kluster %s\n", err.Error())
+		return false
+	}
+	log.Printf("Kluster specs %v", kluster.Spec)
+
+	return true
 }
 
 func (c *Controller) handleAdd(obj interface{}) {
-	log.Println("handle Add was called")
+	log.Printf("handle Add was called")
 	c.wq.Add(obj)
 }
 
