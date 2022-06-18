@@ -16,9 +16,10 @@ type Kluster struct {
 
 type KlusterSpec struct {
 	// this is the place that we mention, what are all required fields/components while calling operator
-	Name    string `json:"name,omitempty"`
-	Region  string `json:"region,omitempty"`
-	Version string `json:"version,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Region      string `json:"region,omitempty"`
+	Version     string `json:"version,omitempty"`
+	TokenSecret string `json:"tokenSecret,omitempty"` // token to connect Digital ocan APi
 
 	NodePools []NodePool `json:"nodePools,omitempty"`
 }
