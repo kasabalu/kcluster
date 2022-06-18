@@ -17,6 +17,10 @@ var (
 	AddToScheme   = SchemeBuilder.AddToScheme
 )
 
+func Resource(resource string) schema.GroupResource {
+	return SchemeGroupVersion.WithResource(resource).GroupResource()
+
+}
 func init() {
 	//this gets called as soon as pkg gets loaded
 	//SchemeBuilder.Register expects Func as perameter that will register k8s

@@ -9,8 +9,11 @@ import (
 	"k8s.io/client-go/util/homedir"
 	"log"
 	"path/filepath"
+	"time"
 
 	klient "github.com/kasabalu/kcluster/pkg/client/clientset/versioned"
+	kfactory "github.com/kasabalu/kcluster/pkg/client/informers/internalversion"
+	"github.com/kasabalu/kcluster/pkg/controller"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -41,5 +44,19 @@ func main() {
 	fmt.Println(klientset)
 	klusters, err := klientset.KasabaluV1alpha1().Klusters("").List(context.Background(), metav1.ListOptions{})
 	fmt.Println(klusters)
+
+	// NewCntroller in controller pkg expets cleintset and Informer
+	// To create informer, call Informer Factory from  factory.go
+
+	ch := make(chan struct{})
+
+	infoFact := kfactory.NewSharedInformerFactory(klientset, 20*time.Minute)
+	c := controller.NewController(klientset, infoFact.Kasabalu().InternalVersion().Klusters())
+	infoFact.Start(ch)
+	err = c.Run(ch)
+
+	if err != nil {
+		log.Println("error running ccontrollelr", err.Error())
+	}
 
 }
